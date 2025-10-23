@@ -1,0 +1,553 @@
+/**
+ * Automation.gs - Automated Analysis System
+ *
+ * PURPOSE:
+ * Automatically runs DDD analysis every 30 minutes during the event
+ * to monitor checked-in guests in real-time.
+ *
+ * FEATURES:
+ * - Runs detectDataDisruptors() every 30 minutes
+ * - Only analyzes guests who have ACTUALLY checked in at the event
+ * - Can be started/stopped manually
+ * - Logs all activity for debugging
+ *
+ * SETUP:
+ * 1. Run setupAutomation() once to create the triggers
+ * 2. Automation will run every 30 minutes automatically
+ * 3. Run stopAutomation() to turn it off after the event
+ */
+
+// ============================================
+// SETUP AND CONTROL FUNCTIONS
+// ============================================
+
+function setupAutomation() {
+  stopAutomation();
+ 
+  ScriptApp.newTrigger('runAutomatedAnalysis')
+    .timeBased()
+    .everyMinutes(30)
+    .create();
+ 
+  Logger.log('✅ Automation setup complete!');
+  Logger.log('Analysis will run every 30 minutes.');
+  Logger.log('Run stopAutomation() to disable.');
+ 
+  SpreadsheetApp.getUi().alert(
+    '✅ Automation Started!\n\n' +
+    'DDD analysis will run automatically every 30 minutes.\n\n' +
+    'Only guests who have checked in at the event will be analyzed.\n\n' +
+    'To stop: Run stopAutomation() function.'
+  );
+}
+
+function stopAutomation() {
+  const triggers = ScriptApp.getProjectTriggers();
+  let removedCount = 0;
+ 
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'runAutomatedAnalysis') {
+      ScriptApp.deleteTrigger(trigger);
+      removedCount++;
+    }
+  });
+ 
+  Logger.log('✅ Removed ' + removedCount + ' automation trigger(s)');
+ 
+  if (removedCount > 0) {
+    SpreadsheetApp.getUi().alert(
+      '✅ Automation Stopped!\n\n' +
+      'Removed ' + removedCount + ' trigger(s).\n' +
+      'Analysis will no longer run automatically.'
+    );
+  }
+}
+
+function checkAutomationStatus() {
+  const triggers = ScriptApp.getProjectTriggers();
+  const activeTriggers = triggers.filter(t => t.getHandlerFunction() === 'runAutomatedAnalysis');
+ 
+  if (activeTriggers.length > 0) {
+    Logger.log('✅ Automation is ACTIVE');
+    Logger.log('Active triggers: ' + activeTriggers.length);
+   
+    SpreadsheetApp.getUi().alert(
+      '✅ Automation Status: ACTIVE\n\n' +
+      'Analysis runs every 30 minutes.\n' +
+      activeTriggers.length + ' trigger(s) active.'
+    );
+  } else {
+    Logger.log('❌ Automation is INACTIVE');
+    SpreadsheetApp.getUi().alert(
+      '❌ Automation Status: INACTIVE\n\n' +
+      'No triggers found.\n' +
+      'Run setupAutomation() to start.'
+    );
+  }
+}
+
+// ============================================
+// AUTOMATED ANALYSIS FUNCTION
+// ============================================
+
+function runAutomatedAnalysis() {
+  const startTime = new Date();
+  Logger.log('=== AUTOMATED ANALYSIS STARTED at ' + startTime.toString() + ' ===');
+ 
+  try {
+    const checkedInCount = countCheckedInGuests();
+    Logger.log('Guests checked in at event: ' + checkedInCount);
+   
+    if (checkedInCount === 0) {
+      Logger.log('No guests checked in yet. Skipping analysis.');
+      return;
+    }
+   
+    Logger.log('Running DDD analysis on checked-in guests...');
+    detectDataDisruptorsForCheckedIn();
+   
+    const endTime = new Date();
+    const duration = (endTime - startTime) / 1000;
+    Logger.log('=== ANALYSIS COMPLETE in ' + duration + ' seconds ===');
+    Logger.log('Next run in 30 minutes');
+   
+  } catch (error) {
+    Logger.log('ERROR in automated analysis: ' + error.toString());
+    Logger.log('Stack: ' + error.stack);
+  }
+}
+
+function manualRunAnalysis() {
+  Logger.log('=== MANUAL ANALYSIS TRIGGERED ===');
+  runAutomatedAnalysis();
+  SpreadsheetApp.getUi().alert(
+    '✅ Manual Analysis Complete!\n\n' +
+    'Check the "DDD (Checked-In Only)" sheet for updated results.\n' +
+    'View execution logs for details.'
+  );
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+function countCheckedInGuests() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const cleanSheet = ss.getSheetByName('Form Responses (Clean)');
+ 
+  if (!cleanSheet) {
+    Logger.log('ERROR: Form Responses (Clean) not found');
+    return 0;
+  }
+ 
+  const data = cleanSheet.getDataRange().getValues();
+  if (data.length < 2) return 0;
+ 
+  const headers = data[0];
+  const checkedInCol = headers.indexOf('Checked-In at Event');
+ 
+  if (checkedInCol === -1) {
+    Logger.log('ERROR: Checked-In at Event column not found');
+    return 0;
+  }
+ 
+  let count = 0;
+  for (let r = 1; r < data.length; r++) {
+    const status = String(data[r][checkedInCol] || '').trim().toUpperCase();
+    if (status === 'Y') count++;
+  }
+ 
+  return count;
+}
+
+function detectDataDisruptorsForCheckedIn() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const cleanSheet = ss.getSheetByName('Form Responses (Clean)');
+ 
+  if (!cleanSheet) {
+    Logger.log('ERROR: Form Responses (Clean) not found');
+    return;
+  }
+ 
+  const cleanData = cleanSheet.getDataRange().getValues();
+  const cleanHeaders = cleanData[0];
+  const allRows = cleanData.slice(1);
+ 
+  const screenNameCol = cleanHeaders.indexOf('Screen Name');
+  const uidCol = cleanHeaders.indexOf('UID');
+  const checkedInCol = cleanHeaders.indexOf('Checked-In at Event');
+ 
+  if (screenNameCol === -1 || uidCol === -1 || checkedInCol === -1) {
+    Logger.log('ERROR: Required columns not found');
+    return;
+  }
+ 
+  const checkedInRows = allRows.filter(row => {
+    const status = String(row[checkedInCol] || '').trim().toUpperCase();
+    return status === 'Y';
+  });
+ 
+  Logger.log('Analyzing ' + checkedInRows.length + ' checked-in guests (out of ' + allRows.length + ' total)');
+ 
+  if (checkedInRows.length === 0) {
+    Logger.log('No checked-in guests to analyze');
+    return;
+  }
+ 
+  const dddHeaders = [
+    'Screen Name',
+    'UID',
+    'DDD - Birthday Format',
+    'DDD - More Than 3 Interests',
+    'DDD - Unknown Guest',
+    'DDD - No Song Request',
+    'DDD - Vague Song Request',
+    'DDD - Multiple Songs Listed',
+    'DDD - No Artist Listed',
+    'DDD - Barely Knows Host',
+    'DDD - Fresh Acquaintance',
+    'DDD - Host Ambiguity',
+    'DDD - Age/Birthday Mismatch',
+    'DDD - Education/Career Implausibility',
+    'DDD - Meme/Joke Response',
+    'DDD - Music/Artist Genre Mismatch',
+    'DDD - Minimum Effort Detected',
+    'DDD - Stranger Danger',
+    'DDD - Relationship Contradiction',
+    'DDD - Special Snowflake Syndrome',
+    'DDD - Suspiciously Generic',
+    'DDD - Composite Liar Score'
+  ];
+ 
+  const COL = {
+    TIMESTAMP: 0,
+    BIRTHDAY: 1,
+    ZODIAC: 2,
+    AGE_RANGE: 3,
+    EDUCATION: 4,
+    ZIP: 5,
+    ETHNICITY: 6,
+    GENDER: 7,
+    ORIENTATION: 8,
+    INDUSTRY: 9,
+    ROLE: 10,
+    KNOW_HOST: 11,
+    WHICH_HOST: 12,
+    HOW_WELL: 13,
+    INTERESTS: 14,
+    MUSIC: 15,
+    ARTIST: 16,
+    SONG: 17,
+    PURCHASE: 18,
+    WORST_TRAIT: 19,
+    SOCIAL_STANCE: 20
+  };
+ 
+  const detectionLog = [];
+  let totalDisruptors = 0;
+ 
+  const dddResults = checkedInRows.map((row, idx) => {
+    const rowNum = idx + 2;
+    const screenName = row[screenNameCol] || 'Unknown';
+    const uid = row[uidCol] || 'No UID';
+   
+    const flags = analyzeSuspiciousPatterns(row, rowNum, COL, detectionLog, screenName);
+   
+    return [screenName, uid, ...flags];
+  });
+ 
+  let dddSheet = ss.getSheetByName('DDD (Checked-In Only)');
+  if (dddSheet) {
+    dddSheet.clear();
+  } else {
+    dddSheet = ss.insertSheet('DDD (Checked-In Only)');
+  }
+ 
+  dddSheet.getRange(1, 1, 1, dddHeaders.length).setValues([dddHeaders]);
+  if (dddResults.length > 0) {
+    dddSheet.getRange(2, 1, dddResults.length, dddHeaders.length).setValues(dddResults);
+  }
+ 
+  formatDDDSheet(dddSheet, dddHeaders.length, dddResults.length);
+ 
+  dddResults.forEach(row => {
+    if (row[row.length - 1] > 0) totalDisruptors++;
+  });
+ 
+  Logger.log('Analysis complete: ' + totalDisruptors + ' disruptors found among checked-in guests');
+ 
+  dddSheet.getRange(1, dddHeaders.length + 2).setValue('Last Updated:');
+  dddSheet.getRange(1, dddHeaders.length + 3).setValue(new Date());
+}
+
+// ============================================
+// ANALYSIS HELPER FUNCTIONS (from DDD.gs)
+// ============================================
+
+function analyzeSuspiciousPatterns(row, rowNum, COL, log, screenName) {
+  const flags = [];
+  let liarScore = 0;
+ 
+  function logViolation(violationType, description) {
+    log.push({
+      screenName: screenName,
+      row: rowNum,
+      violation: violationType,
+      description: description
+    });
+  }
+ 
+  // DDD 1: Birthday Format
+  const birthday = String(row[COL.BIRTHDAY] || '').trim();
+  const birthdayFlag = !birthday || !birthday.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
+  flags.push(birthdayFlag ? 1 : 0);
+  if (birthdayFlag) {
+    liarScore += 1;
+    logViolation('Birthday Format', 'Invalid birthday format: "' + birthday + '"');
+  }
+ 
+  // DDD 2: More Than 3 Interests
+  const interests = String(row[COL.INTERESTS] || '').trim();
+  const interestCount = interests ? interests.split(',').length : 0;
+  const tooManyInterests = interestCount > 3;
+  flags.push(tooManyInterests ? 1 : 0);
+  if (tooManyInterests) {
+    liarScore += 2;
+    logViolation('More Than 3 Interests', 'Listed ' + interestCount + ' interests (max 3 allowed)');
+  }
+ 
+  // DDD 3: Unknown Guest
+  const knowHost = String(row[COL.KNOW_HOST] || '').toLowerCase().trim();
+  const unknownGuest = knowHost === 'no' || knowHost === '';
+  flags.push(unknownGuest ? 1 : 0);
+  if (unknownGuest) {
+    liarScore += 5;
+    logViolation('Unknown Guest', 'Claims not to know the host');
+  }
+ 
+  // DDD 4: No Song Request
+  const song = String(row[COL.SONG] || '').trim();
+  const noSong = !song || song.toLowerCase() === 'none' || song.toLowerCase() === 'n/a';
+  flags.push(noSong ? 1 : 0);
+  if (noSong) {
+    liarScore += 1;
+    logViolation('No Song Request', 'Did not provide a song request');
+  }
+ 
+  // DDD 5: Vague Song Request
+  const vagueSong = song && song.length > 0 && song.length < 10;
+  flags.push(vagueSong ? 1 : 0);
+  if (vagueSong) {
+    liarScore += 1;
+    logViolation('Vague Song Request', 'Very short song request: "' + song + '"');
+  }
+ 
+  // DDD 6: Multiple Songs Listed
+  const multipleSongs = song.includes(',') || song.includes('/') || song.includes('&') || song.includes(' or ');
+  flags.push(multipleSongs ? 1 : 0);
+  if (multipleSongs) {
+    liarScore += 1;
+    logViolation('Multiple Songs Listed', 'Listed multiple songs: "' + song + '"');
+  }
+ 
+  // DDD 7: No Artist Listed
+  const artist = String(row[COL.ARTIST] || '').trim();
+  const noArtist = !artist || artist.toLowerCase() === 'none' || artist.toLowerCase() === 'n/a';
+  flags.push(noArtist ? 1 : 0);
+  if (noArtist && !noSong) {
+    liarScore += 1;
+    logViolation('No Artist Listed', 'Provided song but no artist');
+  }
+ 
+  // DDD 8: Barely Knows Host
+  const howWell = String(row[COL.HOW_WELL] || '').toLowerCase().trim();
+  const barelyKnows = howWell.includes('barely') || howWell.includes('not well') || howWell === 'acquaintance';
+  flags.push(barelyKnows ? 1 : 0);
+  if (barelyKnows) {
+    liarScore += 2;
+    logViolation('Barely Knows Host', 'Barely knows host: "' + howWell + '"');
+  }
+ 
+  // DDD 9: Fresh Acquaintance
+  const freshAcquaintance = howWell.includes('just met') || howWell.includes('recently') || howWell.includes('new');
+  flags.push(freshAcquaintance ? 1 : 0);
+  if (freshAcquaintance) {
+    liarScore += 3;
+    logViolation('Fresh Acquaintance', 'Just met the host: "' + howWell + '"');
+  }
+ 
+  // DDD 10: Host Ambiguity
+  const whichHost = String(row[COL.WHICH_HOST] || '').trim();
+  const hostAmbiguous = !whichHost || whichHost.toLowerCase().includes('both') || whichHost.toLowerCase().includes('not sure');
+  flags.push(hostAmbiguous ? 1 : 0);
+  if (hostAmbiguous && knowHost === 'yes') {
+    liarScore += 2;
+    logViolation('Host Ambiguity', 'Unclear which host they know: "' + whichHost + '"');
+  }
+ 
+  // DDD 11: Age/Birthday Mismatch
+  const ageRange = String(row[COL.AGE_RANGE] || '').trim();
+  let ageMismatch = false;
+  if (birthday.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const birthYear = parseInt(birthday.split('/')[2]);
+    const currentYear = new Date().getFullYear();
+    const calculatedAge = currentYear - birthYear;
+   
+    if (ageRange.includes('18-24') && (calculatedAge < 18 || calculatedAge > 24)) ageMismatch = true;
+    if (ageRange.includes('25-34') && (calculatedAge < 25 || calculatedAge > 34)) ageMismatch = true;
+    if (ageRange.includes('35-44') && (calculatedAge < 35 || calculatedAge > 44)) ageMismatch = true;
+    if (ageRange.includes('45-54') && (calculatedAge < 45 || calculatedAge > 54)) ageMismatch = true;
+  }
+  flags.push(ageMismatch ? 1 : 0);
+  if (ageMismatch) {
+    liarScore += 3;
+    logViolation('Age/Birthday Mismatch', 'Age range "' + ageRange + '" doesn\'t match birthday "' + birthday + '"');
+  }
+ 
+  // DDD 12: Education/Career Implausibility
+  const education = String(row[COL.EDUCATION] || '').toLowerCase();
+  const role = String(row[COL.ROLE] || '').toLowerCase();
+  const implausible = (education.includes('high school') && (role.includes('director') || role.includes('vp') || role.includes('ceo'))) ||
+                       (education.includes('phd') && ageRange === '18-24');
+  flags.push(implausible ? 1 : 0);
+  if (implausible) {
+    liarScore += 4;
+    logViolation('Education/Career Implausibility', 'Education "' + education + '" seems mismatched with role "' + role + '"');
+  }
+ 
+  // DDD 13: Meme/Joke Response
+  const worstTrait = String(row[COL.WORST_TRAIT] || '').toLowerCase();
+  const memeKeywords = ['too awesome', 'too perfect', 'none', 'n/a', 'lol', 'lmao', 'haha', 'idk'];
+  const isMeme = memeKeywords.some(keyword => worstTrait.includes(keyword));
+  flags.push(isMeme ? 1 : 0);
+  if (isMeme) {
+    liarScore += 2;
+    logViolation('Meme/Joke Response', 'Joke response detected: "' + worstTrait + '"');
+  }
+ 
+  // DDD 14: Music/Artist Genre Mismatch
+  const musicGenre = String(row[COL.MUSIC] || '').toLowerCase();
+  const genreMismatch = (musicGenre.includes('classical') && artist.toLowerCase().includes('drake')) ||
+                        (musicGenre.includes('country') && artist.toLowerCase().includes('metallica')) ||
+                        (musicGenre.includes('rap') && artist.toLowerCase().includes('mozart'));
+  flags.push(genreMismatch ? 1 : 0);
+  if (genreMismatch) {
+    liarScore += 2;
+    logViolation('Music/Artist Genre Mismatch', 'Genre "' + musicGenre + '" doesn\'t match artist "' + artist + '"');
+  }
+ 
+  // DDD 15: Minimum Effort Detected
+  const totalChars = String(row.join('')).length;
+  const minEffort = totalChars < 100 || interests.length < 5 || worstTrait.length < 5;
+  flags.push(minEffort ? 1 : 0);
+  if (minEffort) {
+    liarScore += 2;
+    logViolation('Minimum Effort Detected', 'Very short responses (' + totalChars + ' chars total)');
+  }
+ 
+  // DDD 16: Stranger Danger
+  const strangerDanger = unknownGuest && (barelyKnows || freshAcquaintance);
+  flags.push(strangerDanger ? 1 : 0);
+  if (strangerDanger) {
+    liarScore += 5;
+    logViolation('Stranger Danger', 'Multiple indicators of not knowing host');
+  }
+ 
+  // DDD 17: Relationship Contradiction
+  const contradiction = (knowHost === 'yes' && (howWell.includes('never') || howWell.includes("don't"))) ||
+                        (knowHost === 'no' && howWell.includes('well') || howWell.includes('close'));
+  flags.push(contradiction ? 1 : 0);
+  if (contradiction) {
+    liarScore += 4;
+    logViolation('Relationship Contradiction', '"' + knowHost + '" contradicts "' + howWell + '"');
+  }
+ 
+  // DDD 18: Special Snowflake Syndrome
+  const specialSnowflake = interests.toLowerCase().includes('unicorn') ||
+                           interests.toLowerCase().includes('quantum') ||
+                           worstTrait.toLowerCase().includes('care too much') ||
+                           worstTrait.toLowerCase().includes('too nice');
+  flags.push(specialSnowflake ? 1 : 0);
+  if (specialSnowflake) {
+    liarScore += 1;
+    logViolation('Special Snowflake Syndrome', 'Overly unique or self-aggrandizing responses');
+  }
+ 
+  // DDD 19: Suspiciously Generic
+  const genericKeywords = ['stuff', 'things', 'whatever', 'anything', 'nothing special'];
+  const tooGeneric = genericKeywords.some(keyword =>
+    interests.includes(keyword) || worstTrait.includes(keyword)
+  );
+  flags.push(tooGeneric ? 1 : 0);
+  if (tooGeneric) {
+    liarScore += 1;
+    logViolation('Suspiciously Generic', 'Extremely vague or generic responses');
+  }
+ 
+  // DDD 20: Composite Liar Score
+  flags.push(liarScore);
+ 
+  return flags;
+}
+
+function formatDDDSheet(sheet, numCols, numRows) {
+  sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
+ 
+  const headerRange = sheet.getRange(1, 1, 1, numCols);
+  headerRange.setFontWeight('bold');
+  headerRange.setBackground('#434343');
+  headerRange.setFontColor('#ffffff');
+  headerRange.setHorizontalAlignment('center');
+ 
+  sheet.setColumnWidth(1, 150);
+  sheet.setColumnWidth(2, 100);
+  for (let i = 3; i <= numCols - 1; i++) {
+    sheet.setColumnWidth(i, 80);
+  }
+  sheet.setColumnWidth(numCols, 120);
+ 
+  if (numRows > 0) {
+    for (let col = 3; col <= numCols; col++) {
+      const range = sheet.getRange(2, col, numRows, 1);
+     
+      const rule = SpreadsheetApp.newConditionalFormatRule()
+        .whenNumberGreaterThan(0)
+        .setBackground('#f4cccc')
+        .setRanges([range])
+        .build();
+     
+      const rules = sheet.getConditionalFormatRules();
+      rules.push(rule);
+      sheet.setConditionalFormatRules(rules);
+    }
+   
+    const scoreRange = sheet.getRange(2, numCols, numRows, 1);
+    scoreRange.setFontWeight('bold');
+   
+    const scoreRules = [
+      SpreadsheetApp.newConditionalFormatRule()
+        .whenNumberGreaterThanOrEqualTo(10)
+        .setBackground('#cc0000')
+        .setFontColor('#ffffff')
+        .setRanges([scoreRange])
+        .build(),
+      SpreadsheetApp.newConditionalFormatRule()
+        .whenNumberBetween(5, 9)
+        .setBackground('#ff9900')
+        .setRanges([scoreRange])
+        .build(),
+      SpreadsheetApp.newConditionalFormatRule()
+        .whenNumberBetween(1, 4)
+        .setBackground('#ffff00')
+        .setRanges([scoreRange])
+        .build()
+    ];
+   
+    const allRules = sheet.getConditionalFormatRules();
+    sheet.setConditionalFormatRules(allRules.concat(scoreRules));
+  }
+ 
+  sheet.autoResizeColumns(1, numCols);
+}
+

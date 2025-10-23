@@ -1,0 +1,395 @@
+/**
+ * ============================================================================
+ * ROUTER.GS - Web App Entry Point and Routing
+ * ============================================================================
+ */
+
+/**
+ * Main entry point for web app requests
+ * @param {Object} e - Event object with query parameters
+ * @return {HtmlOutput} Rendered HTML page
+ */
+function doGet(e) {
+  try {
+    // Handle case where e is undefined (when called from script editor)
+    if (!e || !e.parameter) {
+      e = { parameter: {} };
+    }
+    
+    // Get page parameter from URL (?page=display)
+    const page = (e.parameter.page || 'display').toLowerCase();
+    
+    Logger.log(`doGet called with page: ${page}`);
+    
+    // Route to appropriate page
+    switch(page) {
+      // === MAIN DISPLAY SYSTEM ===
+      case 'display':
+        return serveDisplayPage();
+      
+      // === STANDALONE CHECK-IN ===
+      case 'checkin':
+        return serveCheckInPage();
+      
+      // === INDIVIDUAL ANALYTICS PAGES ===
+      case 'intro':
+        return serveIntroPage();
+      
+      case 'wall':
+        return serveWallPage();
+      
+      case 'mm':
+      case 'matchmaker':
+        return serveMatchmakerPage();
+      
+      case 'msa':
+        return serveMSAPage();
+      
+      case 'network':
+        return serveNetworkPage();
+      
+      case 'map':
+        return serveMapPage();
+      
+      // === DEFAULT ===
+      default:
+        Logger.log(`Unknown page requested: ${page}, defaulting to display`);
+        return serveDisplayPage();
+    }
+    
+  } catch (error) {
+    Logger.log('Error in doGet: ' + error.toString());
+    return createErrorPage(error);
+  }
+}
+
+/**
+ * Serve the main display rotation system
+ * @return {HtmlOutput} Display orchestrator page
+ */
+function serveDisplayPage() {
+  try {
+    const html = HtmlService.createTemplateFromFile('Display')
+      .evaluate()
+      .setTitle('Panopticon Display System')
+      .setFaviconUrl('https://ssl.gstatic.com/docs/script/images/favicon.ico')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return html;
+  } catch (error) {
+    Logger.log('Error serving display page: ' + error.toString());
+    throw error;
+  }
+}
+
+/**
+ * Serve the check-in interface
+ * @return {HtmlOutput} Check-in page
+ */
+function serveCheckInPage() {
+  try {
+    const html = HtmlService.createTemplateFromFile('CheckInInterface')
+      .evaluate()
+      .setTitle('Guest Check-In')
+      .setFaviconUrl('https://ssl.gstatic.com/docs/script/images/favicon.ico')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return html;
+  } catch (error) {
+    Logger.log('Error serving check-in page: ' + error.toString());
+    throw error;
+  }
+}
+
+/**
+ * Serve the intro/welcome page
+ * @return {HtmlOutput} Intro page
+ */
+function serveIntroPage() {
+  try {
+    const html = HtmlService.createTemplateFromFile('intro')
+      .evaluate()
+      .setTitle('Welcome to Panopticon')
+      .setFaviconUrl('https://ssl.gstatic.com/docs/script/images/favicon.ico')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return html;
+  } catch (error) {
+    Logger.log('Error serving intro page: ' + error.toString());
+    return createPlaceholderPage('intro', 'Welcome to the Panopticon');
+  }
+}
+
+/**
+ * Serve the network visualization wall
+ * @return {HtmlOutput} Wall HTML page
+ */
+function serveWallPage() {
+  try {
+    const html = HtmlService.createTemplateFromFile('wall')
+      .evaluate()
+      .setTitle('Network Visualization Wall')
+      .setFaviconUrl('https://ssl.gstatic.com/docs/script/images/favicon.ico')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return html;
+  } catch (error) {
+    Logger.log('Error serving wall page: ' + error.toString());
+    return createPlaceholderPage('wall', 'Network Visualization Wall');
+  }
+}
+
+/**
+ * Serve the matchmaker page
+ * @return {HtmlOutput} Matchmaker page
+ */
+function serveMatchmakerPage() {
+  try {
+    // ✅ FIX: Changed 'MM' to 'mm' to match actual HTML file name
+    const html = HtmlService.createTemplateFromFile('mm')
+      .evaluate()
+      .setTitle('Guest Matchmaker')
+      .setFaviconUrl('https://ssl.gstatic.com/docs/script/images/favicon.ico')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+    return html;
+  } catch (error) {
+    Logger.log('Error serving matchmaker page: ' + error.toString());
+    return createPlaceholderPage('mm', 'Guest Similarity Matchmaker');
+  }
+}
+
+/**
+ * Serve the MSA analysis page
+ * @return {HtmlOutput} MSA page
+ */
+function serveMSAPage() {
+  try {
+    const html = HtmlService.createTemplateFromFile('msa')
+      .evaluate()
+      .setTitle('MSA Analysis')
+      .setFaviconUrl('https://ssl.gstatic.com/docs/script/images/favicon.ico')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return html;
+  } catch (error) {
+    Logger.log('Error serving MSA page: ' + error.toString());
+    return createPlaceholderPage('msa', 'MSA Analysis');
+  }
+}
+
+/**
+ * Serve the network graph page
+ * @return {HtmlOutput} Network page
+ */
+function serveNetworkPage() {
+  try {
+    const html = HtmlService.createTemplateFromFile('network')
+      .evaluate()
+      .setTitle('Network Graph')
+      .setFaviconUrl('https://ssl.gstatic.com/docs/script/images/favicon.ico')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return html;
+  } catch (error) {
+    Logger.log('Error serving network page: ' + error.toString());
+    return createPlaceholderPage('network', 'Network Graph Visualization');
+  }
+}
+
+/**
+ * Serve the zip code map page
+ * @return {HtmlOutput} Map page
+ */
+function serveMapPage() {
+  try {
+    const html = HtmlService.createTemplateFromFile('map')
+      .evaluate()
+      .setTitle('Geographic Distribution')
+      .setFaviconUrl('https://ssl.gstatic.com/docs/script/images/favicon.ico')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return html;
+  } catch (error) {
+    Logger.log('Error serving map page: ' + error.toString());
+    return createPlaceholderPage('map', 'Geographic Distribution Map');
+  }
+}
+
+/**
+ * Include helper - allows including CSS/JS files in HTML
+ * Usage in HTML: <?!= include('styles') ?>
+ * @param {string} filename - Name of file to include (without .html extension)
+ * @return {string} File contents
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+ * Create a placeholder page when the actual HTML file doesn't exist yet
+ * @param {string} pageName - Name of the page
+ * @param {string} title - Page title
+ * @return {HtmlOutput} Placeholder page
+ */
+function createPlaceholderPage(pageName, title) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${title}</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        body {
+          font-family: 'Arial', sans-serif;
+          background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+          color: white;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          text-align: center;
+          padding: 20px;
+        }
+        h1 {
+          font-size: 48px;
+          margin-bottom: 20px;
+          text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        p {
+          font-size: 20px;
+          opacity: 0.9;
+          max-width: 600px;
+          line-height: 1.6;
+        }
+        .icon {
+          font-size: 80px;
+          margin-bottom: 30px;
+          opacity: 0.7;
+        }
+        .status {
+          margin-top: 40px;
+          padding: 15px 30px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          backdrop-filter: blur(10px);
+        }
+      </style>
+    </head>
+    <body>
+      <div class="icon">🚧</div>
+      <h1>${title}</h1>
+      <p>This page is currently under construction.</p>
+      <div class="status">
+        <strong>Page:</strong> ${pageName}.html<br>
+        <strong>Status:</strong> Coming Soon
+      </div>
+    </body>
+    </html>
+  `;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(title)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Create an error page
+ * @param {Error} error - The error object
+ * @return {HtmlOutput} Error page
+ */
+function createErrorPage(error) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Error</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background: #1a1a1a;
+          color: #ff4444;
+          padding: 40px;
+          text-align: center;
+        }
+        h1 { margin-bottom: 20px; }
+        pre {
+          background: #2a2a2a;
+          padding: 20px;
+          border-radius: 5px;
+          text-align: left;
+          overflow: auto;
+          color: #ffaa00;
+        }
+        a {
+          display: inline-block;
+          margin-top: 20px;
+          padding: 10px 20px;
+          background: #333;
+          color: white;
+          text-decoration: none;
+          border-radius: 5px;
+        }
+        a:hover { background: #444; }
+      </style>
+    </head>
+    <body>
+      <h1>⚠️ Error Loading Page</h1>
+      <pre>${error.toString()}</pre>
+      <a href="?page=display">Go to Display System</a>
+      <a href="?page=checkin">Go to Check-In</a>
+    </body>
+    </html>
+  `;
+  
+  return HtmlService.createHtmlOutput(html);
+}
+
+/**
+ * Test function - opens display system in new tab from script editor
+ * Run this to quickly test your deployment
+ */
+function testOpenDisplay() {
+  const url = ScriptApp.getService().getUrl();
+  Logger.log('Web App URL: ' + url);
+  Logger.log('Display URL: ' + url + '?page=display');
+  Logger.log('Check-in URL: ' + url + '?page=checkin');
+  
+  SpreadsheetApp.getUi().alert(
+    '🚀 Web App URLs:\n\n' +
+    'Display System:\n' + url + '?page=display\n\n' +
+    'Check-In Portal:\n' + url + '?page=checkin\n\n' +
+    'Copy these URLs for your event!'
+  );
+}
+
+/**
+ * Test function - verify all pages load
+ */
+function testAllPages() {
+  const pages = ['display', 'checkin', 'intro', 'wall', 'mm', 'msa', 'network', 'map'];
+  const results = [];
+  
+  pages.forEach(page => {
+    try {
+      const mockEvent = { parameter: { page: page } };
+      const result = doGet(mockEvent);
+      results.push(`✅ ${page}: OK`);
+    } catch (error) {
+      results.push(`❌ ${page}: ${error.toString()}`);
+    }
+  });
+  
+  Logger.log('Page Test Results:\n' + results.join('\n'));
+  SpreadsheetApp.getUi().alert('Page Test Results:\n\n' + results.join('\n'));
+}
+
+

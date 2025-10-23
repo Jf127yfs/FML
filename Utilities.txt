@@ -1,0 +1,132 @@
+/**
+ * Check in specific guests by UID for precise testing
+ */
+function mockCheckInSpecificGuests() {
+  Logger.log('╔════════════════════════════════════════════════════════════════╗');
+  Logger.log('║           🎯 CHECK IN SPECIFIC GUESTS (BY UID)                 ║');
+  Logger.log('╚════════════════════════════════════════════════════════════════╝\n');
+ 
+  const uidsToCheckIn = [
+    'PS-438',  // PhantomShade 438
+    'HJ-127',  // HollowJack 127
+    'CM-903',  // CryptMuse 903
+    'GD-521',  // GraveDancer 521
+    'VS-664'   // VelvetSpecter 664
+  ];
+ 
+  Logger.log('📋 WHAT THIS DOES:');
+  Logger.log('   • Checks in ONLY the guests you specify');
+  Logger.log('   • Useful for testing specific scenarios\n');
+ 
+  Logger.log('🎯 GUESTS TO CHECK IN:');
+  uidsToCheckIn.forEach((uid, i) => {
+    Logger.log('   ' + (i + 1) + '. ' + uid);
+  });
+  Logger.log('');
+ 
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+ 
+  if (!sheet) {
+    Logger.log('❌ ERROR: Sheet "' + SHEET_NAME + '" not found');
+    return;
+  }
+ 
+  Logger.log('✅ Found sheet: ' + SHEET_NAME);
+ 
+  const data = sheet.getDataRange().getValues();
+  let checkedInCount = 0;
+  let notFoundCount = 0;
+ 
+  Logger.log('\n🔍 Searching for specified guests...\n');
+ 
+  const lock = LockService.getScriptLock();
+  try {
+    lock.tryLock(30000);
+    Logger.log('   🔒 Lock acquired\n');
+   
+    for (let i = 1; i < data.length; i++) {
+      const uid = String(data[i][UID_COL - 1] || '').trim();
+     
+      if (uidsToCheckIn.includes(uid)) {
+        const row = i + 1;
+        const screenName = data[i][SCREEN_NAME_COL - 1];
+       
+        sheet.getRange(row, CHECKED_FLAG_COL).setValue('Y');
+       
+        const now = new Date();
+        const checkInTime = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          19 + Math.floor(Math.random() * 4),
+          Math.floor(Math.random() * 60),
+          0
+        );
+        sheet.getRange(row, CHECKED_TS_COL).setValue(checkInTime);
+       
+        const timeStr = Utilities.formatDate(checkInTime, Session.getScriptTimeZone(), 'HH:mm');
+        Logger.log('   ✅ Found and checked in: ' + screenName + ' (' + uid + ') at ' + timeStr);
+        checkedInCount++;
+      }
+    }
+   
+    SpreadsheetApp.flush();
+    Logger.log('\n   💾 Changes saved');
+   
+  } finally {
+    lock.releaseLock();
+    Logger.log('   🔓 Lock released\n');
+  }
+ 
+  notFoundCount = uidsToCheckIn.length - checkedInCount;
+ 
+  Logger.log('╔════════════════════════════════════════════════════════════════╗');
+  Logger.log('║                    ✅ CHECK-IN COMPLETE                        ║');
+  Logger.log('╚════════════════════════════════════════════════════════════════╝\n');
+ 
+  Logger.log('📊 RESULTS:');
+  Logger.log('   • Requested: ' + uidsToCheckIn.length + ' guests');
+  Logger.log('   • Successfully checked in: ' + checkedInCount);
+  if (notFoundCount > 0) {
+    Logger.log('   • ⚠️  Not found: ' + notFoundCount);
+  }
+  Logger.log('');
+  Logger.log('════════════════════════════════════════════════════════════════\n');
+}
+
+/**
+ * Show current check-in status (diagnostic tool)
+ */
+function showCheckInStatus() {
+  Logger.log('╔════════════════════════════════════════════════════════════════╗');
+  Logger.log('║                📊 CHECK-IN STATUS REPORT                       ║');
+  Logger.log('╚════════════════════════════════════════════════════════════════╝\n');
+ 
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+ 
+  if (!sheet) {
+    Logger.log('❌ ERROR: Sheet "' + SHEET_NAME + '" not found');
+    return;
+  }
+ 
+  Logger.log('✅ Reading from: ' + SHEET_NAME + '\n');
+ 
+  const data = sheet.getDataRange().getValues();
+  let checkedInCount = 0;
+  let notCheckedInCount = 0;
+ 
+  for (let i = 1; i < data.length; i++) {
+    const checkedIn = String(data[i][CHECKED_FLAG_COL - 1] || '').trim().toUpperCase();
+    if (checkedIn === 'Y') {
+      checkedInCount++;
+    } else {
+      notCheckedInCount++;
+    }
+  }
+}
+
+
+
+

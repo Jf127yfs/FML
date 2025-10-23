@@ -1,0 +1,139 @@
+// ============================================
+// ADMIN UTILITIES - EXPORT_CSV.GS
+// ============================================
+// Purpose: Contains functions for exporting spreadsheet data.
+// - Creates an 'Admin Tools' menu on spreadsheet open.
+// - Exports all sheets as CSV files to a FIXED Drive folder.
+// ============================================
+
+// GLOBAL CONSTANT
+// The ID of the target Google Drive folder (ID extracted from the URL).
+const TARGET_FOLDER_ID = '1iR4UQ1V8Iy4IIbqN5Ifzi6zUNt8bRueB';
+
+// ============================================
+// MENU AND SETUP
+// ============================================
+
+/**
+ * Creates a custom menu in the spreadsheet UI for admin tasks.
+ * This runs automatically when the spreadsheet is opened.
+ */
+function onOpen() {
+  SpreadsheetApp.getUi()
+      .createMenu('Admin Tools')
+      .addItem('Export All Sheets as CSV', 'exportAllSheetsAsCsv')
+      .addToUi();
+}
+
+/**
+ * Retrieves the dedicated Drive folder using the fixed ID.
+ * Throws an error if the folder is not found or not accessible.
+ * @returns {GoogleAppsScript.Drive.Folder} The export folder.
+ */
+function getExportFolder_() {
+  try {
+    const folder = DriveApp.getFolderById(TARGET_FOLDER_ID);
+    Logger.log('Using fixed Drive folder: ' + folder.getName());
+    return folder;
+  } catch (e) {
+    Logger.log('ERROR: Target folder not found or accessible with ID: ' + TARGET_FOLDER_ID + '. Error: ' + e.toString());
+    throw new Error('Target Drive folder not found or accessible. Please check the ID and permissions.');
+  }
+}
+
+// ============================================
+// EXPORT LOGIC
+// ============================================
+
+/**
+ * Exports all sheets in the active spreadsheet as individual CSV files
+ * to the fixed target folder in Google Drive. If a file exists, it is replaced,
+ * ensuring the latest data is exported.
+ * * @returns {void} The function now returns nothing for a cleaner exit.
+ */
+function exportAllSheetsAsCsv() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+ 
+  // Use the updated function to get the fixed folder
+  const exportFolder = getExportFolder_();
+ 
+  let successCount = 0;
+  let errorCount = 0;
+ 
+  Logger.log('--- STARTING CSV EXPORT TO DRIVE FOLDER: ' + exportFolder.getName() + ' ---');
+
+  sheets.forEach(sheet => {
+    const sheetName = sheet.getName();
+    const fileName = `${sheetName}.csv`;
+   
+    try {
+      // 1. Get sheet data and generate CSV content
+      const data = sheet.getDataRange().getValues();
+      if (data.length === 0) {
+        Logger.log(`Skipping sheet "${sheetName}": No data.`);
+        return;
+      }
+     
+      // Manually escape quotes and join data for robust CSV format
+      const csvContent = data.map(row =>
+        row.map(cell => {
+          let value = String(cell).replace(/"/g, '""');
+          // Add newline handling to ensure content within quotes is preserved
+          if (value.includes('\n')) {
+              value = value.replace(/\n/g, ' '); // Replace internal newlines with space
+          }
+          return `"${value}"`;
+        }).join(',')
+      ).join('\n');
+     
+      // 2. Create Blob
+      const blob = Utilities.newBlob(csvContent, MimeType.CSV, fileName);
+
+      // 3. Check for existing file
+      const files = exportFolder.getFilesByName(fileName);
+     
+      if (files.hasNext()) {
+        // --- FIX IMPLEMENTED HERE: Use Drive API to update file content/MIME type ---
+        const existingFile = files.next();
+       
+        // This is a more reliable way to update content and maintain MIME type
+        // The Drive service is implicitly available if DriveApp is used.
+        Drive.Files.update({
+            mimeType: MimeType.CSV
+          },
+          existingFile.getId(),
+          blob
+        );
+        Logger.log(`[UPDATED] Sheet "${sheetName}" saved to existing file: ${existingFile.getUrl()}`);
+        // --------------------------------------------------------------------------
+      } else {
+        // Create new file
+        exportFolder.createFile(blob);
+        Logger.log(`[CREATED] Sheet "${sheetName}" saved to new file.`);
+      }
+     
+      successCount++;
+    } catch (e) {
+      // Catch errors, particularly if the Drive API fails or an API call limit is hit
+      Logger.log(`[ERROR] Failed to export sheet "${sheetName}": ${e.toString()}`);
+      errorCount++;
+    }
+  });
+
+  Logger.log('--- CSV EXPORT COMPLETE ---');
+ 
+  // Final Alert to user
+  SpreadsheetApp.getUi().alert(
+    'CSV Export Complete',
+    `All sheets successfully exported to Drive:\n\n` +
+    `Folder: ${exportFolder.getName()}\n` +
+    `Successes: ${successCount}\n` +
+    `Failures: ${errorCount}\n\n` +
+    `Check the script logs (View > Logs) for links and details.`,
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+
+

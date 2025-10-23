@@ -1,0 +1,104 @@
+// ============================================================================
+// CENTRALIZED CONFIGURATION - Config.gs
+// ============================================================================
+
+// SHEET NAMES
+const SHEET_NAME = 'Form Responses (Clean)';
+const WALL_CLEAN_SHEET = 'Form Responses (Clean)';
+const REPORTS_CLEAN_SHEET = 'Form Responses (Clean)';
+const DDD_SHEET_NAME = 'DDD (Checked-In Only)';
+const DDD_REPORT_SHEET = 'DDD Report';
+const FORM_RESPONSES_ORIGINAL = 'Form Responses 1';
+const REPORTS_MASTER_SHEET = 'Pan_Master';
+
+// DRIVE CONFIGURATION
+const PHOTOS_FOLDER_NAME = 'Event Guest Photos';
+const WALL_TARGET_ADDRESS = '5317 Charlotte St, Kansas City, MO 64110';
+
+// FORM RESPONSES (CLEAN) - COLUMN INDICES
+const TIMESTAMP_COL = 1;
+const BIRTHDAY_COL = 2;
+const ZODIAC_COL = 3;
+const AGE_RANGE_COL = 4;
+const EDUCATION_COL = 5;
+const ZIP_COL = 6;
+const ETHNICITY_COL = 7;
+const GENDER_COL = 8;
+const ORIENTATION_COL = 9;
+const INDUSTRY_COL = 10;
+const ROLE_COL = 11;
+const HOST_KNOW_COL = 12;
+const HOST_LONGEST_COL = 13;
+const HOST_SCORE_COL = 14;
+const INTERESTS_COL = 15;
+const MUSIC_PREF_COL = 16;
+const ARTIST_COL = 17;
+const SONG_REQUEST_COL = 18;
+const RECENT_PURCHASE_COL = 19;
+const AT_WORST_COL = 20;
+const SOCIAL_STANCE_COL = 21;
+const SCREEN_NAME_COL = 22;
+const UID_COL = 23;
+const CHECKED_FLAG_COL = 24;
+const CHECKED_TS_COL = 25;
+const PHOTO_URL_COL = 26;
+
+// DDD (CHECKED-IN ONLY) - COLUMN INDICES
+const DDD_SCREEN_NAME_COL = 1;
+const DDD_UID_COL = 2;
+const DDD_BIRTHDAY_FORMAT_COL = 3;
+const DDD_MORE_THAN_3_INTERESTS_COL = 4;
+const DDD_UNKNOWN_GUEST_COL = 5;
+const DDD_NO_SONG_REQUEST_COL = 6;
+const DDD_VAGUE_SONG_REQUEST_COL = 7;
+const DDD_MULTIPLE_SONGS_COL = 8;
+const DDD_NO_ARTIST_COL = 9;
+const DDD_BARELY_KNOWS_HOST_COL = 10;
+const DDD_FRESH_ACQUAINTANCE_COL = 11;
+const DDD_HOST_AMBIGUITY_COL = 12;
+const DDD_AGE_BIRTHDAY_MISMATCH_COL = 13;
+const DDD_EDUCATION_CAREER_COL = 14;
+const DDD_MEME_JOKE_COL = 15;
+const DDD_MUSIC_GENRE_MISMATCH_COL = 16;
+const DDD_MINIMUM_EFFORT_COL = 17;
+const DDD_STRANGER_DANGER_COL = 18;
+const DDD_RELATIONSHIP_CONTRADICTION_COL = 19;
+const DDD_SPECIAL_SNOWFLAKE_COL = 20;
+const DDD_SUSPICIOUSLY_GENERIC_COL = 21;
+const DDD_COMPOSITE_SCORE_COL = 22;
+const DDD_ESTIMATED_FRAUD_COL = 23;
+
+// ANALYSIS CATEGORIES FOR WALL
+const ANALYSIS_CATEGORIES = [
+  { field: 'Music Preference', name: 'MUSIC_GENRE' },
+  { field: 'Self-Identified Gender', name: 'GENDER_IDENTITY' },
+  { field: 'Self-Identified Sexual Orientation', name: 'ORIENTATION' },
+  { field: 'Age Range', name: 'AGE_COHORT' },
+  { field: 'Education Level', name: 'EDUCATION_LEVEL' },
+  { field: 'Self Identified Ethnicity', name: 'ETHNIC_IDENTITY' },
+  { field: 'Employment Information (Industry)', name: 'INDUSTRY_SECTOR' },
+  { field: 'Employment Information (Role)', name: 'OCCUPATIONAL_ROLE' },
+  { field: 'At your worst you are�', name: 'PERSONALITY_TRAIT' },
+  { field: 'Recent purchase you\'re most happy about', name: 'CONSUMER_BEHAVIOR' },
+  { field: 'Do you know the Host(s)?', name: 'HOST_RELATIONSHIP_DURATION' },
+  { field: 'Which host have you known the longest?', name: 'PRIMARY_HOST_CONNECTION' }
+];
+
+// TIMING CONSTANTS
+const CYCLE_INTERVAL = 20000;
+const SECONDARY_CYCLE_INTERVAL = 15000;
+const LINE_DRAW_TIME = 800;
+const FADE_OUT_TIME = 500;
+const CRITICAL_ANIMATION_SPEED = 3000;
+
+// COLOR PALETTE
+const COLOR_PALETTE = [
+  'rgba(255, 0, 0, 1)', 'rgba(255, 105, 180, 1)', 'rgba(255, 165, 0, 1)',
+  'rgba(255, 255, 0, 1)', 'rgba(0, 255, 0, 1)', 'rgba(0, 255, 127, 1)',
+  'rgba(0, 255, 255, 1)', 'rgba(0, 191, 255, 1)', 'rgba(138, 43, 226, 1)',
+  'rgba(255, 0, 255, 1)', 'rgba(255, 20, 147, 1)', 'rgba(255, 69, 0, 1)',
+  'rgba(173, 255, 47, 1)', 'rgba(0, 206, 209, 1)', 'rgba(147, 112, 219, 1)',
+  'rgba(255, 140, 0, 1)', 'rgba(50, 205, 50, 1)', 'rgba(255, 192, 203, 1)',
+  'rgba(64, 224, 208, 1)', 'rgba(238, 130, 238, 1)'
+];
+
